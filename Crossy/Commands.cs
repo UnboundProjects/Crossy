@@ -24,7 +24,34 @@ namespace Crossy {
             // Replies in the channel the command was used, with an empty string, non-text to speech, and using the Embed we made earlier.
             await ReplyAsync ("", false, builder.Build ());
         }
+        [Command ("setup")]
+        public async Task SetupAsync()
+        {
+            var guild = Context.Guild;
+            List<Reaction> reactions = new List<Reaction>();
+            List<Mute> mutes = new List<Mute>();
+            List<UserWarning> warnings = new List<UserWarning>();
+            GuildInfo guildInfo = new GuildInfo
+            {
+                ServerName = guild.Name,
+                CreationDate = guild.CreatedAt.ToString(),
+                Creator = $"{guild.Owner.Username}#{guild.Owner.Discriminator}",
+                CreatorId = guild.OwnerId,
+                BannerURL = guild.BannerUrl
+            };
 
+            GuildModel newGuild = new GuildModel
+            {
+                GuildID = guild.Id.ToString(),
+                GuildInfo = guildInfo,
+                Mutes = mutes,
+                Reactions = reactions,
+                UserWarnings = warnings
+            };
+
+            MongoCRUD.Instance.InitOrg(newGuild);
+            await ReplyAsync("Setup complete");
+        }
         [Command ("warn")]
         public async Task WarnAsync(SocketGuildUser target, [Remainder] string reason)
         {
@@ -44,32 +71,29 @@ namespace Crossy {
                     DateTime = DateTime.Now.ToString(),
                     Moderator = moderator
                 };
-                foreach (var rec in recs)
+                if (recs[0].UserWarnings.Count != 0)
                 {
-                    if (rec.Warnings.Count != 0)
-                    {
-                        await ReplyAsync("I need to do something here");
-                    }
-                    else
-                    {
-
-
-                        List<Warning> warnings = new List<Warning>();
-                        warnings.Add(warning);
-                        rec.Warnings.Add(
-                            new UserWarning
-                            {
-                                UserId = target.Id.ToString(),
-                                Warnings = warnings
-                            });
-                        MongoCRUD.Instance.UpdateWarning("Servers", rec.GuildID.ToString(), rec);
-                        await ReplyAsync("User has been warned.");
-                    }
+                    recs[0].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings.Add(warning);
+                    MongoCRUD.Instance.UpdateWarning("Servers", recs[0].GuildID.ToString(), recs[0]);
+                    await ReplyAsync("User has been warned.");
+                }
+                else
+                { 
+                    List<Warning> warnings = new List<Warning>();
+                    warnings.Add(warning);
+                    recs[0].UserWarnings.Add(
+                        new UserWarning
+                        {
+                             UserId = target.Id.ToString(),
+                             Warnings = warnings
+                        });
+                    MongoCRUD.Instance.UpdateWarning("Servers", recs[0].GuildID.ToString(), recs[0]);
+                    await ReplyAsync("User has been warned.");
                 }
             }
             else
             {
-
+                await ReplyAsync("There has been an error.");
             }   
         }
     }

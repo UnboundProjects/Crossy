@@ -95,7 +95,7 @@ namespace Crossy {
                 GuildInfo = guildInfo,
                 Mutes = mutes,
                 Reactions = reactions,
-                Warnings = warnings
+                UserWarnings = warnings
             };
 
             MongoCRUD.Instance.InitOrg(newGuild);

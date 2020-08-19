@@ -32,7 +32,7 @@ namespace Crossy
             {
                 Console.WriteLine("Connected to mongo client");
             }
-            db = client.GetDatabase("Servers");
+            db = client.GetDatabase("Crossy");
         }
 
         public void InitOrg<T>(T record)

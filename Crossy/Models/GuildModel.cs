@@ -7,10 +7,10 @@ namespace Crossy.Models
     public class GuildModel
     {
         [BsonId]
-        public ulong GuildID { get; set; }
+        public string GuildID { get; set; }
         public GuildInfo GuildInfo { get; set; }
         public List<Mute> Mutes { get; set; }
         public List<Reaction> Reactions { get; set; }
-        public List<UserWarning> Warnings { get; set; }
+        public List<UserWarning> UserWarnings { get; set; }
     }
 }
