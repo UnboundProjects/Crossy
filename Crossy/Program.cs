@@ -79,6 +79,7 @@ namespace Crossy {
         {
             List<Reaction> reactions = new List<Reaction>();
             List<Mute> mutes = new List<Mute>();
+            List<UserWarning> warnings = new List<UserWarning>();
             GuildInfo guildInfo = new GuildInfo
             {
                 ServerName = guild.Name,
@@ -90,10 +91,11 @@ namespace Crossy {
 
             GuildModel newGuild = new GuildModel
             {
-                GuildID = guild.Id,
+                GuildID = guild.Id.ToString(),
                 GuildInfo = guildInfo,
                 Mutes = mutes,
-                Reactions = reactions
+                Reactions = reactions,
+                Warnings = warnings
             };
 
             MongoCRUD.Instance.InitOrg(newGuild);

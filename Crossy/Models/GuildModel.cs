@@ -11,5 +11,6 @@ namespace Crossy.Models
         public GuildInfo GuildInfo { get; set; }
         public List<Mute> Mutes { get; set; }
         public List<Reaction> Reactions { get; set; }
+        public List<UserWarning> Warnings { get; set; }
     }
 }

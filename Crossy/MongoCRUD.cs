@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Crossy
@@ -37,6 +39,27 @@ namespace Crossy
         {
             var collection = db.GetCollection<T>("Servers");
             collection.InsertOne(record);
+        }
+
+        public List<T> LoadServerRec<T>(string id, string parsedFilter, string Collection)
+        {
+            var collection = db.GetCollection<T>(Collection);
+            var filter = Builders<T>.Filter.Eq(parsedFilter, id);
+
+            return collection.Find(filter).ToList();
+        }
+
+        public void UpdateWarning<UserWarning>(string table, string id, UserWarning record)
+        {
+            var collection = db.GetCollection<UserWarning>(table);
+
+            var result = collection.ReplaceOne(
+                new BsonDocument("_id", id),
+                record,
+                new ReplaceOptions
+                {
+                    IsUpsert = true
+                });
         }
     }
 }
