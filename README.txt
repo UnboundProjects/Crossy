@@ -1,0 +1,1 @@
+This will be a Discord Bot for Jayden "High" Butler's major end of year Comp Sci project.
