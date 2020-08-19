@@ -49,6 +49,13 @@ namespace Crossy
             return collection.Find(filter).ToList();
         }
 
+        public List<T> LoadRecords<T>(string table)
+        {
+            var collection = db.GetCollection<T>(table);
+
+            return collection.Find(new BsonDocument()).ToList();
+        }
+
         public void UpdateWarning<UserWarning>(string table, string id, UserWarning record)
         {
             var collection = db.GetCollection<UserWarning>(table);

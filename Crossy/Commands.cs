@@ -57,7 +57,9 @@ namespace Crossy {
         {
             var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
 
-            if (recs.Count != 0)
+            int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+            if (recs.Count() != 0)
             {
                 Moderator moderator = new Moderator
                 {
@@ -66,28 +68,32 @@ namespace Crossy {
                     id = Context.User.Id
                 };
                 Warning warning = new Warning
-                {
+                {   
                     WarnReason = reason,
                     DateTime = DateTime.Now.ToString(),
                     Moderator = moderator
                 };
-                if (recs[0].UserWarnings.Count != 0)
+                try
                 {
-                    recs[0].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings.Add(warning);
-                    MongoCRUD.Instance.UpdateWarning("Servers", recs[0].GuildID.ToString(), recs[0]);
-                    await ReplyAsync("User has been warned.");
+                    var rec = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
+                    if (rec.Count != 0 && recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings != null)
+                    {
+                        recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings.Add(warning);
+                        MongoCRUD.Instance.UpdateWarning("Servers", recs[index].GuildID.ToString(), recs[index]);
+                        await ReplyAsync("User has been warned.");
+                    }
                 }
-                else
-                { 
+                catch
+                {
                     List<Warning> warnings = new List<Warning>();
                     warnings.Add(warning);
-                    recs[0].UserWarnings.Add(
+                    recs[index].UserWarnings.Add(
                         new UserWarning
                         {
-                             UserId = target.Id.ToString(),
-                             Warnings = warnings
+                            UserId = target.Id.ToString(),
+                            Warnings = warnings
                         });
-                    MongoCRUD.Instance.UpdateWarning("Servers", recs[0].GuildID.ToString(), recs[0]);
+                    MongoCRUD.Instance.UpdateWarning("Servers", recs[index].GuildID.ToString(), recs[index]);
                     await ReplyAsync("User has been warned.");
                 }
             }
@@ -95,6 +101,37 @@ namespace Crossy {
             {
                 await ReplyAsync("There has been an error.");
             }   
+        }
+        [Command ("warnings")]
+        public async Task WarningAsync(SocketUser target)
+        {
+            int amount = 0;
+
+            var recs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+            int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+            StringBuilder sb = new StringBuilder();
+            if (recs.Count() != 0)
+            {
+                try
+                {
+                    var warnings = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
+                    for (int i = 0; i < warnings.Count(); i++)
+                    {
+                        sb.Append($"**Warning #{i + 1}**: {warnings[i].WarnReason} - {warnings[i].DateTime}\n\n");
+                    }
+                    amount = warnings.Count();
+                    EmbedBuilder builder = new EmbedBuilder();
+                    builder.WithTitle($"**Warnings for {target.Username}#{target.Discriminator}**").WithColor(Discord.Color.Red)
+                        .WithDescription(sb.ToString()).WithThumbnailUrl(target.GetAvatarUrl()).WithFooter($"Total: {amount}");
+
+                    await ReplyAsync("", false, builder.Build());
+                }
+                catch
+                {
+                    await ReplyAsync("This user has no warnings.");
+                }
+            }
         }
     }
 }
