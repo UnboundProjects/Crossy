@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace Crossy.Models
@@ -7,5 +8,8 @@ namespace Crossy.Models
     {
         [BsonId]
         public ulong GuildID { get; set; }
+        public GuildInfo GuildInfo { get; set; }
+        public List<Mute> Mutes { get; set; }
+        public List<Reaction> Reactions { get; set; }
     }
 }

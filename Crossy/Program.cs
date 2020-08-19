@@ -77,9 +77,23 @@ namespace Crossy {
 
         private async Task GuildJoin(SocketGuild guild)
         {
+            List<Reaction> reactions = new List<Reaction>();
+            List<Mute> mutes = new List<Mute>();
+            GuildInfo guildInfo = new GuildInfo
+            {
+                ServerName = guild.Name,
+                CreationDate = guild.CreatedAt.ToString(),
+                Creator = $"{guild.Owner.Username}#{guild.Owner.Discriminator}",
+                CreatorId = guild.OwnerId,
+                BannerURL = guild.BannerUrl
+            };
+
             GuildModel newGuild = new GuildModel
             {
-                GuildID = guild.Id
+                GuildID = guild.Id,
+                GuildInfo = guildInfo,
+                Mutes = mutes,
+                Reactions = reactions
             };
 
             MongoCRUD.Instance.InitOrg(newGuild);
