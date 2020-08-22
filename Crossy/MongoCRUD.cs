@@ -24,9 +24,7 @@ namespace Crossy
         }
 
         public MongoCRUD()
-        {
-            //DotNetEnv.Env.Load();
-
+        {               
             var client = new MongoClient(DotNetEnv.Env.GetString("MONGO_TOKEN"));
             if(client != null)
             {
@@ -35,10 +33,10 @@ namespace Crossy
             db = client.GetDatabase("Crossy");
         }
 
-        public void InitOrg<T>(T record)
+        public void InitOrg<T>(T table)
         {
             var collection = db.GetCollection<T>("Servers");
-            collection.InsertOne(record);
+            collection.InsertOne(table);
         }
 
         public List<T> LoadServerRec<T>(string id, string parsedFilter, string Collection)
@@ -50,7 +48,7 @@ namespace Crossy
         }
 
         public List<T> LoadRecords<T>(string table)
-        {
+        {       
             var collection = db.GetCollection<T>(table);
 
             return collection.Find(new BsonDocument()).ToList();

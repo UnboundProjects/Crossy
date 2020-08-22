@@ -121,7 +121,7 @@ namespace Crossy {
 
                 // Tries to find and execute a command with the remainder of the message.
                 // If there's no command for the remainder of the message, the result will comeback with an Unknown Command message.
-                var result = await _commands.ExecuteAsync (context, argumentPosition, _services);
+                                        var result = await _commands.ExecuteAsync (context, argumentPosition, _services);
 
                 if (!result.IsSuccess) {
                     Console.WriteLine (result.ErrorReason);

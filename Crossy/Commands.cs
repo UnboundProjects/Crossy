@@ -94,7 +94,7 @@ namespace Crossy {
                             Warnings = warnings
                         });
                     MongoCRUD.Instance.UpdateWarning("Servers", recs[index].GuildID.ToString(), recs[index]);
-                    await ReplyAsync("User has been warned.");
+                    await ReplyAsync("User has been warned."); 
                 }
             }
             else
