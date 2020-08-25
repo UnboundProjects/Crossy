@@ -49,7 +49,7 @@ namespace Crossy {
                 UserWarnings = warnings
             };
 
-            MongoCRUD.Instance.InitOrg(newGuild);
+            MongoCRUD.Instance.InitServer(newGuild);
             await ReplyAsync("Setup complete");
         }
         [Command ("warn")]
@@ -76,9 +76,9 @@ namespace Crossy {
                 try
                 {
                     var rec = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
-                    if (rec.Count != 0 && recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings != null)
-                    {
-                        recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings.Add(warning);
+                    if (rec.Count != 0 && rec != null)
+                    {   
+                        rec.Add(warning);
                         MongoCRUD.Instance.UpdateWarning("Servers", recs[index].GuildID.ToString(), recs[index]);
                         await ReplyAsync("User has been warned.");
                     }
@@ -103,7 +103,7 @@ namespace Crossy {
             }   
         }
         [Command ("warnings")]
-        public async Task WarningAsync(SocketUser target)
+        public async Task WarningsAsync(SocketUser target)
         {
             int amount = 0;
 

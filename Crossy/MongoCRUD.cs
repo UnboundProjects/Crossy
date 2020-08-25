@@ -33,7 +33,7 @@ namespace Crossy
             db = client.GetDatabase("Crossy");
         }
 
-        public void InitOrg<T>(T table)
+        public void InitServer<T>(T table)
         {
             var collection = db.GetCollection<T>("Servers");
             collection.InsertOne(table);

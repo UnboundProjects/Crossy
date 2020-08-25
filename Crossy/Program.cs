@@ -98,7 +98,7 @@ namespace Crossy {
                 UserWarnings = warnings
             };
 
-            MongoCRUD.Instance.InitOrg(newGuild);
+            MongoCRUD.Instance.InitServer(newGuild);
 
             await Task.CompletedTask;
         }
