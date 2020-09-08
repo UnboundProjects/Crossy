@@ -24,9 +24,9 @@ namespace Crossy
         }
 
         public MongoCRUD()
-        {               
+        {
             var client = new MongoClient(DotNetEnv.Env.GetString("MONGO_TOKEN"));
-            if(client != null)
+            if (client != null)
             {
                 Console.WriteLine("Connected to mongo client");
             }
