@@ -54,9 +54,9 @@ namespace Crossy
             return collection.Find(new BsonDocument()).ToList();
         }
 
-        public void UpdateWarning<UserWarning>(string table, string id, UserWarning record)
+        public void UpdateRecord<T>(string table, string id, T record)
         {
-            var collection = db.GetCollection<UserWarning>(table);
+            var collection = db.GetCollection<T>(table);
 
             var result = collection.ReplaceOne(
                 new BsonDocument("_id", id),

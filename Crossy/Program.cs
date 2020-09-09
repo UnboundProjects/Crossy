@@ -61,6 +61,10 @@ namespace Crossy {
             //Ouput a message to console so we know the bot connected
             Console.WriteLine("Bot connected and ready to go!");
 
+
+            _ = Task.Run(MuteManager.Instance.CheckMutesAsync);
+
+
             // This is so the bot never closes unless there is a bug or error.
             await Task.Delay (-1);
         }
