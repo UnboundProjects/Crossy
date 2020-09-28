@@ -49,8 +49,9 @@ namespace Crossy {
                 Reactions = reactions,
                 UserWarnings = warnings
             };
-
+            //Run the init server method which inputs the server into the database
             MongoCRUD.Instance.InitServer(newGuild);
+            //Reply with setup is complete if it doesnt break
             await ReplyAsync("Setup complete");
         }
         [Command ("warn")]
@@ -62,46 +63,63 @@ namespace Crossy {
             //Checks to see if the person who used the command has the staff role
             if (staffRole != null)
             {
-
+                //Gets the server record from the database
                 var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
 
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
+                //If recs isn't empty. This if statement is redundant and can be removed
                 if (recs.Count() != 0)
                 {
+                    //Creating the moderator var
                     Moderator moderator = new Moderator
                     {
                         Username = Context.User.Username,
                         Discriminator = Context.User.DiscriminatorValue,
                         id = Context.User.Id
                     };
+                    //Creating the warning var
                     Warning warning = new Warning
                     {
                         WarnReason = reason,
                         DateTime = DateTime.Now.ToString(),
                         Moderator = moderator
                     };
+                    //The try catch is just a test to see if it exists yet or not
                     try
                     {
+                        //Set rec to to the record where the user id matches the target id. This is where the catch will happen if the
+                        //Rec doesn't exist
                         var rec = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
+                        //Just making sure stuff doesn't break. Could probably be removed
                         if (rec.Count != 0 && rec != null)
                         {
+                            //Add warning to the array
                             rec.Add(warning);
+                            //Update the record
                             MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+                            //Let them know user has been warned if everything goes well
                             await ReplyAsync("User has been warned.");
                         }
                     }
+                    //If something breaks
                     catch
                     {
+                        //Creating the list of warnings we need
                         List<Warning> warnings = new List<Warning>();
+                        //Adding the warning to the list we just made
                         warnings.Add(warning);
+                        //Adding that warning array to the user warning array
                         recs[index].UserWarnings.Add(
                             new UserWarning
                             {
                                 UserId = target.Id.ToString(),
                                 Warnings = warnings
                             });
+                        //Update the record
                         MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+                        //Let them know the user has been warned if everything goes well
                         await ReplyAsync("User has been warned.");
                     }
                 }
