@@ -12,5 +12,6 @@ namespace Crossy.Models
         public List<Mute> Mutes { get; set; }
         public List<Reaction> Reactions { get; set; }
         public List<UserWarning> UserWarnings { get; set; }
+        public CustomAnnouncement CustomAnnouncement { get; set; }
     }
 }

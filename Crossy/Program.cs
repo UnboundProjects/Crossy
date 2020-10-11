@@ -14,7 +14,7 @@ using Crossy.Models;
 namespace Crossy {
     class DiscordBot {
         // Basic Discord variables. Client, for the instance of the Discord bot client, and the commands and services that are required to run the bot and inject commands.
-        public DiscordSocketClient _client;
+        public static DiscordSocketClient _client;
         public CommandService _commands;
         public IServiceProvider _services;
 
@@ -62,7 +62,7 @@ namespace Crossy {
             Console.WriteLine("Bot connected and ready to go!");
 
 
-            _ = Task.Run(MuteManager.Instance.CheckMutesAsync);
+            _ = Task.Run(CheckMutesAsync);
 
 
             // This is so the bot never closes unless there is a bug or error.
@@ -131,6 +131,41 @@ namespace Crossy {
                     Console.WriteLine (result.ErrorReason);
                 }
             }
+        }
+        public async Task CheckMutesAsync()
+        {
+            await Task.Delay(120000);
+            DateTime todayDateTime = DateTime.UtcNow;
+
+            bool removedMute = false;
+
+            var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+            foreach (var rec in serverRecs)
+            {
+                var guildId = rec.GuildID;
+                foreach (var mute in rec.Mutes)
+                {
+                    if (todayDateTime >= mute.MuteFinished)
+                    {
+                        var guild = _client.GetGuild(ulong.Parse(guildId));
+                        SocketGuildUser user = guild.GetUser(mute.Target.id);
+                        var role = guild.Roles.FirstOrDefault(r => r.Name == "Muted");
+
+                        await user.RemoveRoleAsync(role);
+
+                        serverRecs.Remove(rec);
+
+                        removedMute = true;
+                    }
+                    if (removedMute)
+                    {
+                        MongoCRUD.Instance.UpdateRecord("Servers", rec.GuildID.ToString(), rec);
+                    }
+                }
+
+            }
+
+            _ = Task.Run(CheckMutesAsync);
         }
     }
 }

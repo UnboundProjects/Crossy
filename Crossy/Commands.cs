@@ -7,22 +7,26 @@ using Crossy.Models;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Newtonsoft.Json.Serialization;
 
-namespace Crossy {
+namespace Crossy 
+{
     // This is the Commands class. We need to inherit the Context class through our Modules so we can use Context.
-    public class Commands : ModuleBase<SocketCommandContext> {
+    public class Commands : ModuleBase<SocketCommandContext>
+    {
         // Registering a new command. Ping can be whatever, but this is what will follow the prefix we assign in the Program file. In this case, it's an !, so !ping will cause this to run.
-        [Command ("Ping")]
+        [Command("Ping")]
         // Every command needs to be followed with a public async Task or Task<T> function.
-        public async Task PingAsync () {
+        public async Task PingAsync()
+        {
             // Creates an EmbedBuilder, something we can use to create an Embed.            
-            EmbedBuilder builder = new EmbedBuilder ();
+            EmbedBuilder builder = new EmbedBuilder();
 
             // Gives the Embed a title, description, and side color.
-            builder.WithTitle ("Ping!").WithDescription ("This is a really nice ping.. apparently.").WithColor (Discord.Color.Red);
+            builder.WithTitle("Ping!").WithDescription("This is a really nice ping.. apparently.").WithColor(Discord.Color.Red);
 
             // Replies in the channel the command was used, with an empty string, non-text to speech, and using the Embed we made earlier.
-            await ReplyAsync ("", false, builder.Build ());
+            await ReplyAsync("", false, builder.Build());
         }
         [Command("setup")]
         public async Task SetupAsync()
@@ -32,6 +36,7 @@ namespace Crossy {
             List<Reaction> reactions = new List<Reaction>();
             List<Mute> mutes = new List<Mute>();
             List<UserWarning> warnings = new List<UserWarning>();
+            CustomAnnouncement customAnnouncement = new CustomAnnouncement();
             GuildInfo guildInfo = new GuildInfo
             {
                 ServerName = guild.Name,
@@ -47,14 +52,17 @@ namespace Crossy {
                 GuildInfo = guildInfo,
                 Mutes = mutes,
                 Reactions = reactions,
-                UserWarnings = warnings
+                UserWarnings = warnings,
+                CustomAnnouncement = customAnnouncement
             };
             //Run the init server method which inputs the server into the database
             MongoCRUD.Instance.InitServer(newGuild);
             //Reply with setup is complete if it doesnt break
             await ReplyAsync("Setup complete");
         }
-        [Command ("warn")]
+        #region Moderation
+        #region Warn related
+        [Command("warn")]
         public async Task WarnAsync(SocketGuildUser target, [Remainder] string reason)
         {
             //Creating the variables we need for the warn command
@@ -129,7 +137,7 @@ namespace Crossy {
                 }
             }
         }
-        [Command ("warnings")]
+        [Command("warnings")]
         public async Task WarningsAsync(SocketUser target)
         {
             var user = Context.User as SocketGuildUser;
@@ -181,7 +189,7 @@ namespace Crossy {
                 {
                     if (recs[warningIndex].Warnings != null)
                     {
-                        
+
                         EmbedBuilder builder = new EmbedBuilder();
                         builder.WithTitle($"**Warning #{warning + 1} for {target.Username}#{target.Discriminator}**").WithColor(Discord.Color.Red)
                             .WithDescription($"Reason: {recs[warningIndex].Warnings[warning].WarnReason}\n\nTime given: {recs[warningIndex].Warnings[warning].DateTime}\n\n" +
@@ -219,8 +227,8 @@ namespace Crossy {
                 if (recs.Count != 0)
                 {
                     recs[warningIndex].Warnings.Remove(recs[warningIndex].Warnings[warning]);
-                        MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
-                    
+                    MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
+
                     await ReplyAsync("User's warning has been removed.");
                 }
                 else
@@ -233,6 +241,8 @@ namespace Crossy {
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
+        #endregion
+        #region Mute Related
         [Command("mute")]
         public async Task MuteAsync(SocketGuildUser targetFake, string time, [Remainder] string reason)
         {
@@ -311,5 +321,292 @@ namespace Crossy {
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
+        [Command("unmute")]
+        public async Task UnMuteAsync(SocketGuildUser targetFake)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            if (staffRole != null)
+            {
+                var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                int muteIndex = serverRecs[index].Mutes.IndexOf(serverRecs[index].Mutes.Where(x => x.Target.id == targetFake.Id).FirstOrDefault());
+
+                serverRecs[index].Mutes.Remove(serverRecs[index].Mutes[muteIndex]);
+
+                MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
+
+                var muteRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == "Muted");
+
+                await targetFake.RemoveRoleAsync(muteRole);
+
+                await ReplyAsync($"<@{targetFake.Id}> has been unmuted.");
+
+            }
+            else
+            {
+                await ReplyAsync("You do not have permission to use this command.");
+            }
+        }
+        [Command("mutes")]
+        public async Task MutesAsync()
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            if (staffRole != null)
+            {
+                var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                StringBuilder sb = new StringBuilder();
+                foreach (var mute in serverRecs[index].Mutes)
+                {
+                    TimeSpan timeLeft = mute.MuteFinished.Subtract(DateTime.UtcNow);
+                    string timeLeftTrimmed = string.Format($"{timeLeft.Days}:{timeLeft.Hours}:{timeLeft.Minutes}:{timeLeft.Seconds}");
+                    sb.Append($"<@{mute.Target.id}> - {mute.Reason} - {timeLeftTrimmed}\n");
+                }
+
+                EmbedBuilder builder = new EmbedBuilder();
+                builder.WithTitle("Active Mutes:").WithDescription(sb.ToString()).WithColor(Discord.Color.DarkerGrey);
+
+                await ReplyAsync("", false, builder.Build());
+            }
+            else
+            {
+                await ReplyAsync("You do not have permission to use this command.");
+            }
+        }
+        #endregion
+
+        [Command("softban")]
+        public async Task SoftbanAsync(SocketGuildUser user, [Remainder] string reason)
+        {
+            var user1 = Context.User as SocketGuildUser;
+            var staffRole = user1.Roles.FirstOrDefault(x => x.Name == "Staff");
+            if (staffRole != null)
+            {
+                EmbedBuilder builder = new EmbedBuilder();
+                builder.WithTitle($"**{user.Username}#{user.Discriminator} has been soft banned.**").WithColor(Discord.Color.Red);
+
+                EmbedBuilder builder1 = new EmbedBuilder();
+                builder1.WithTitle($"**You have been kicked from the {Context.Guild.Name} server**").WithDescription($"Reason: {reason}").WithColor(Discord.Color.Red)
+                    .WithFooter("If you think this was an error, please contact a moderator.");
+
+                await user.SendMessageAsync("", false, builder1.Build());
+                await user.BanAsync();
+                await Context.Guild.RemoveBanAsync(user);
+                await ReplyAsync("", false, builder.Build());
+            }
+            else
+            {
+                await ReplyAsync("You do not have permission to use this command.");
+            }
+        }
+        [Command("clear")]
+        public async Task ClearAsync(int amount)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            if (staffRole != null)
+            {
+                var messages = await Context.Channel.GetMessagesAsync(amount + 1).FlattenAsync();
+                await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
+                var msg = await ReplyAsync($"{amount} messages cleared.");
+
+                await Task.Delay(2000);
+
+                await msg.DeleteAsync();
+            }
+            else
+            {
+                await ReplyAsync("You do not have permission to use this command.");
+            }
+        }
+        #endregion
+        #region Custom announcements
+        [Command("custom body")]
+        public async Task CustomBodyAsync([Remainder] string body)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                //Set the body of the announcement in the recs variable
+                recs[index].CustomAnnouncement.Body = body;
+
+                //Update the record
+                MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+
+                await ReplyAsync("Custom body has been set.");
+            }
+        }
+
+        [Command("custom title")]
+        public async Task CustomTitleAsync([Remainder] string title)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                //Set the title of the announcement in the recs variable
+                recs[index].CustomAnnouncement.Title = title;
+
+                //Update the record
+                MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+
+                await ReplyAsync("Custom title has been set.");
+            }
+            
+        }
+        [Command("custom footer")]
+        public async Task CustomFooterAsync([Remainder] string footer)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                //Set the footer of the announcement in the recs variable
+                recs[index].CustomAnnouncement.Footer = footer;
+
+                //Update the record
+                MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+
+                await ReplyAsync("Custom footer has been set.");
+            }
+
+        }
+
+        [Command("custom thumbnail")]
+        public async Task CustomThumbnailAsync([Remainder] string thumbnail)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                //Set the thumbnail of the announcement in the recs variable
+                recs[index].CustomAnnouncement.Thumbnail = thumbnail;
+
+                //Update the record
+                MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+
+                await ReplyAsync("Custom thumbnail has been set.");
+            }
+
+        }
+
+        [Command("custom post")]
+        public async Task CustomPostAsync()
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                var rec = recs[index].CustomAnnouncement;
+
+                EmbedBuilder builder = new EmbedBuilder();
+                builder.WithTitle(rec.Title).WithColor(Discord.Color.Red)
+                    .WithDescription(rec.Body).WithFooter(rec.Footer);
+
+                try
+                {
+                    builder.WithThumbnailUrl(rec.Thumbnail);
+                    await ReplyAsync("", false, builder.Build());
+                }
+                catch
+                {
+                    await ReplyAsync("", false, builder.Build());
+                }
+                
+            }
+
+        }
+
+        //Works but need to figure out a way to make it so it cannot break. The try catches dont work because if the first
+        //arg isnt a channel it just errors out. Need to figure out how to get around this.
+        [Command("custom post")]
+        public async Task CustomPostToChannelAsync(SocketTextChannel channel, [Remainder] string message)
+        {
+            var user = Context.User as SocketGuildUser;
+            var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            //Checks to see if the person who used the command has the staff role
+            if (staffRole != null)
+            {
+                //Gets the server record from the database
+                var recs = MongoCRUD.Instance.LoadServerRec<GuildModel>(Context.Guild.Id.ToString(), "GuildID", "Servers");
+
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
+                int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+
+                var rec = recs[index].CustomAnnouncement;
+
+                EmbedBuilder builder = new EmbedBuilder();
+                builder.WithTitle(rec.Title).WithColor(Discord.Color.Red)
+                    .WithDescription(rec.Body).WithFooter(rec.Footer);
+
+                try
+                {
+                    builder.WithThumbnailUrl(rec.Thumbnail);
+                    try
+                    {
+                        await channel.SendMessageAsync(message, false, builder.Build());
+                    }
+                    catch
+                    {
+                        await ReplyAsync("ERROR: Text Channel doens't exist.");
+                    }
+                }
+                catch
+                {
+                    try
+                    {
+                        await channel.SendMessageAsync(message, false, builder.Build());
+                    }
+                    catch
+                    {
+                        await ReplyAsync("ERROR: Text Channel doens't exist.");
+                    }
+                }
+
+            }
+
+        }
+
+        #endregion
     }
 }
