@@ -9,6 +9,13 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Newtonsoft.Json.Serialization;
 
+/*
+ * 
+ * TO DO
+ * Remove the index variable and just find the rec properly like in the first command :)
+ * Add catches to !mute command to stop people from being dumb
+ */
+
 namespace Crossy 
 {
     // This is the Commands class. We need to inherit the Context class through our Modules so we can use Context.
@@ -28,10 +35,14 @@ namespace Crossy
             // Replies in the channel the command was used, with an empty string, non-text to speech, and using the Embed we made earlier.
             await ReplyAsync("", false, builder.Build());
         }
+        
+        //TO DO:
+        //Check to see if the document is there first before creating another, otherwise
+        //The whole thing will bug out, poggers!
         [Command("setup")]
         public async Task SetupAsync()
         {
-            //Creating the variables we need for the setup command
+            //VARIABLES
             var guild = Context.Guild;
             List<Reaction> reactions = new List<Reaction>();
             List<Mute> mutes = new List<Mute>();
@@ -55,8 +66,10 @@ namespace Crossy
                 UserWarnings = warnings,
                 CustomAnnouncement = customAnnouncement
             };
-            //Run the init server method which inputs the server into the database
+
+            //Run the InitServer method which inputs the server into the database
             MongoCRUD.Instance.InitServer(newGuild);
+            
             //Reply with setup is complete if it doesnt break
             await ReplyAsync("Setup complete");
         }
@@ -65,7 +78,7 @@ namespace Crossy
         [Command("warn")]
         public async Task WarnAsync(SocketGuildUser target, [Remainder] string reason)
         {
-            //Creating the variables we need for the warn command
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -77,97 +90,112 @@ namespace Crossy
                 //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
-                //If recs isn't empty. This if statement is redundant and can be removed
-                if (recs.Count() != 0)
+                //Creating the moderator var
+                Moderator moderator = new Moderator
                 {
-                    //Creating the moderator var
-                    Moderator moderator = new Moderator
+                    Username = Context.User.Username,
+                    Discriminator = Context.User.DiscriminatorValue,
+                    id = Context.User.Id
+                };
+                //Creating the warning var
+                Warning warning = new Warning
+                {
+                    WarnReason = reason,
+                    DateTime = DateTime.Now.ToString(),
+                    Moderator = moderator
+                };
+                //The try catch is just a test to see if it exists yet or not
+                try
+                {
+                    //Set rec to to the record where the user id matches the target id. This is where the catch will happen if the
+                    //Rec doesn't exist
+                    var rec = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
+                    //Just making sure stuff doesn't break. Could probably be removed
+                    if (rec.Count != 0 && rec != null)
                     {
-                        Username = Context.User.Username,
-                        Discriminator = Context.User.DiscriminatorValue,
-                        id = Context.User.Id
-                    };
-                    //Creating the warning var
-                    Warning warning = new Warning
-                    {
-                        WarnReason = reason,
-                        DateTime = DateTime.Now.ToString(),
-                        Moderator = moderator
-                    };
-                    //The try catch is just a test to see if it exists yet or not
-                    try
-                    {
-                        //Set rec to to the record where the user id matches the target id. This is where the catch will happen if the
-                        //Rec doesn't exist
-                        var rec = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
-                        //Just making sure stuff doesn't break. Could probably be removed
-                        if (rec.Count != 0 && rec != null)
-                        {
-                            //Add warning to the array
-                            rec.Add(warning);
-                            //Update the record
-                            MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
-                            //Let them know user has been warned if everything goes well
-                            await ReplyAsync("User has been warned.");
-                        }
-                    }
-                    //If something breaks
-                    catch
-                    {
-                        //Creating the list of warnings we need
-                        List<Warning> warnings = new List<Warning>();
-                        //Adding the warning to the list we just made
-                        warnings.Add(warning);
-                        //Adding that warning array to the user warning array
-                        recs[index].UserWarnings.Add(
-                            new UserWarning
-                            {
-                                UserId = target.Id.ToString(),
-                                Warnings = warnings
-                            });
+                        //Add warning to the array
+                        rec.Add(warning);
                         //Update the record
                         MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
-                        //Let them know the user has been warned if everything goes well
+                        //Let them know user has been warned if everything goes well
                         await ReplyAsync("User has been warned.");
                     }
                 }
-                else
+                //If something breaks
+                catch
                 {
-                    await ReplyAsync("There has been an error.");
+                    //Creating the list of warnings we need
+                    List<Warning> warnings = new List<Warning>();
+                    //Adding the warning to the list we just made
+                    warnings.Add(warning);
+                    //Adding that warning array to the user warning array
+                    recs[index].UserWarnings.Add(
+                        new UserWarning
+                        {
+                            UserId = target.Id.ToString(),
+                            Warnings = warnings
+                        });
+                    //Update the record
+                    MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
+                    //Let them know the user has been warned if everything goes well
+                    await ReplyAsync("User has been warned.");
                 }
             }
         }
         [Command("warnings")]
         public async Task WarningsAsync(SocketUser target)
         {
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            
+            //If the user has the Staff role
             if (staffRole != null)
             {
+                //Set amount to 0
                 int amount = 0;
 
+                //Load in recs
                 var recs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
                 int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
+                //Set sb to a new string builder
                 StringBuilder sb = new StringBuilder();
+                
+                
                 if (recs.Count() != 0)
                 {
+                    //Trying to see if the user has any warnings
                     try
                     {
+                        //Sets warnings to the users warnings
                         var warnings = recs[index].UserWarnings.FirstOrDefault(i => i.UserId == target.Id.ToString()).Warnings;
-                        amount = warnings.Count();
+                        
+                        //Sets amount to the count of the warnings the user has
+                        amount = warnings.Count(); 
+
+                        //For every item in the array, append it to the string builder
                         for (int i = 0; i < amount; i++)
                         {
                             sb.Append($"**Warning #{i + 1}**: {warnings[i].WarnReason} - {warnings[i].DateTime}\n\n");
                         }
+
+                        //Creates an embed builder
                         EmbedBuilder builder = new EmbedBuilder();
+
+                        //Adds information to the embed builder
                         builder.WithTitle($"**Warnings for {target.Username}#{target.Discriminator}**").WithColor(Discord.Color.Red)
                             .WithDescription(sb.ToString()).WithThumbnailUrl(target.GetAvatarUrl()).WithFooter($"Total: {amount}");
-
+                        
+                        //Reply to the user with the built embed
                         await ReplyAsync("", false, builder.Build());
                     }
+
+                    //Catches it if the users warnings cannot be found
                     catch
                     {
+
+                        //Reply to the user with the built embed
                         await ReplyAsync("This user has no warnings.");
                     }
                 }
@@ -246,8 +274,12 @@ namespace Crossy
         [Command("mute")]
         public async Task MuteAsync(SocketGuildUser targetFake, string time, [Remainder] string reason)
         {
+
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staff role
             if (staffRole != null)
             {
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
@@ -386,6 +418,10 @@ namespace Crossy
             var staffRole = user1.Roles.FirstOrDefault(x => x.Name == "Staff");
             if (staffRole != null)
             {
+                await user.BanAsync();
+                await Context.Guild.RemoveBanAsync(user);
+                
+
                 EmbedBuilder builder = new EmbedBuilder();
                 builder.WithTitle($"**{user.Username}#{user.Discriminator} has been soft banned.**").WithColor(Discord.Color.Red);
 
@@ -394,8 +430,6 @@ namespace Crossy
                     .WithFooter("If you think this was an error, please contact a moderator.");
 
                 await user.SendMessageAsync("", false, builder1.Build());
-                await user.BanAsync();
-                await Context.Guild.RemoveBanAsync(user);
                 await ReplyAsync("", false, builder.Build());
             }
             else

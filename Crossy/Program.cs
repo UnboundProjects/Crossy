@@ -81,9 +81,11 @@ namespace Crossy {
 
         private async Task GuildJoin(SocketGuild guild)
         {
+            //Creating the variables we need for the setup command
             List<Reaction> reactions = new List<Reaction>();
             List<Mute> mutes = new List<Mute>();
             List<UserWarning> warnings = new List<UserWarning>();
+            CustomAnnouncement customAnnouncement = new CustomAnnouncement();
             GuildInfo guildInfo = new GuildInfo
             {
                 ServerName = guild.Name,
@@ -99,9 +101,10 @@ namespace Crossy {
                 GuildInfo = guildInfo,
                 Mutes = mutes,
                 Reactions = reactions,
-                UserWarnings = warnings
+                UserWarnings = warnings,
+                CustomAnnouncement = customAnnouncement
             };
-
+            //Run the init server method which inputs the server into the database
             MongoCRUD.Instance.InitServer(newGuild);
 
             await Task.CompletedTask;
@@ -125,41 +128,74 @@ namespace Crossy {
 
                 // Tries to find and execute a command with the remainder of the message.
                 // If there's no command for the remainder of the message, the result will comeback with an Unknown Command message.
-                                        var result = await _commands.ExecuteAsync (context, argumentPosition, _services);
+                var result = await _commands.ExecuteAsync (context, argumentPosition, _services);
 
                 if (!result.IsSuccess) {
-                    Console.WriteLine (result.ErrorReason);
+                    Console.WriteLine(result.ErrorReason);
+
+                    //Console.WriteLine();
+                    if(_commands.Commands.Last().Name.ToLower() == "custom post")
+                    {
+                        await msg.Channel.SendMessageAsync("ERROR: Channel not found.");
+                    }
+                    else if (result.ErrorReason != "Unknown command.")
+                    {
+                        await msg.Channel.SendMessageAsync("ERROR: Incorrect formatting.");
+                    }
                 }
             }
         }
         public async Task CheckMutesAsync()
         {
+            //Delays the task for 2 minutes
             await Task.Delay(120000);
+            
+            //Gets the current time in utc
             DateTime todayDateTime = DateTime.UtcNow;
-
+            
+            //Sets removedMute to false
             bool removedMute = false;
-
+            
+            //Gets all the server records
             var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+            
+            //Looping through all the servers in the records
             foreach (var rec in serverRecs)
             {
+                //Setting guildId to the records guild id
                 var guildId = rec.GuildID;
+
+                //Loops through the mutes array inside the guild document
                 foreach (var mute in rec.Mutes)
                 {
+                    //If the current time is equal to or less than the mute finished time
                     if (todayDateTime >= mute.MuteFinished)
                     {
+                        //Get the guild the user is muted in as an object
                         var guild = _client.GetGuild(ulong.Parse(guildId));
+                        
+                        //Get the user as an object
                         SocketGuildUser user = guild.GetUser(mute.Target.id);
+                        
+                        //Get the muted role from the server
                         var role = guild.Roles.FirstOrDefault(r => r.Name == "Muted");
 
+                        //Removed the muted role from the user
                         await user.RemoveRoleAsync(role);
 
+                        //Remove the mute from the mutes array
                         serverRecs.Remove(rec);
 
+                        //Set removedMute to true
                         removedMute = true;
                     }
                     if (removedMute)
                     {
+                        //Update the record
                         MongoCRUD.Instance.UpdateRecord("Servers", rec.GuildID.ToString(), rec);
+                        
+                        //Set removedMute to false
+                        removedMute = false;
                     }
                 }
 
