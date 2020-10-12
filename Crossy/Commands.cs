@@ -204,68 +204,107 @@ namespace Crossy
         [Command("warning")]
         public async Task WarningAsync(SocketGuildUser target, int warning)
         {
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+            
+            //If the user has the staff role
             if (staffRole != null)
             {
+                //MORE VARIABLES
+                //Take 1 from the warning amount since numbers start at 0 in programming
                 warning -= 1;
+                //Get the server recs
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                //Get the index of the server the command was used in
                 int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+                //Save serverRecs[index].UserWarnings as recs for ease of access
                 var recs = serverRecs[index].UserWarnings;
+                //Get the index of the target's warnings inside the UserWarnings array
                 var warningIndex = recs.IndexOf(recs.Where(p => p.UserId == target.Id.ToString()).FirstOrDefault());
+                
+                //If recs exists. This is a safe guard if statement
                 if (recs.Count != 0)
                 {
+
+                    //If the user has warnings
                     if (recs[warningIndex].Warnings != null)
                     {
-
+                        //Create the embed builder object
                         EmbedBuilder builder = new EmbedBuilder();
+                        
+                        //Add information to the builder
                         builder.WithTitle($"**Warning #{warning + 1} for {target.Username}#{target.Discriminator}**").WithColor(Discord.Color.Red)
                             .WithDescription($"Reason: {recs[warningIndex].Warnings[warning].WarnReason}\n\nTime given: {recs[warningIndex].Warnings[warning].DateTime}\n\n" +
                                 $"Moderator: {recs[warningIndex].Warnings[warning].Moderator.Username}#{recs[warningIndex].Warnings[warning].Moderator.Discriminator}").WithThumbnailUrl(target.GetAvatarUrl());
+                        
+                        //Reply to the user with the embed
                         await ReplyAsync("", false, builder.Build());
                     }
+                    //If the user has no warnings
                     else
                     {
+                        //Reply to the user
                         await ReplyAsync("User's warning doesn't exist.");
                     }
                 }
+                //If the recs dont exist
                 else
                 {
+                    //Reply to the user
                     await ReplyAsync("This user has no warnings.");
                 }
             }
+            //If they dont have the staff role
             else
             {
+                //Reply to the user 
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
         [Command("rm warning")]
         public async Task RmWarningAsync(SocketGuildUser target, int warning)
         {
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staff role
             if (staffRole != null)
             {
+                //MORE VARIABLES
+                //Take 1 from the warning amount since numbers start at 0 in programming
                 warning -= 1;
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                //Get the index of the server the command was used in
                 int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+                //Save serverRecs[index].UserWarnings as recs for ease of access
                 var recs = serverRecs[index].UserWarnings;
+                //Get the index of the target's warnings inside the UserWarnings array
                 var warningIndex = recs.IndexOf(recs.Where(p => p.UserId == target.Id.ToString()).FirstOrDefault());
-
+                
+                //If recs exists. This is a safe guard if statement
                 if (recs.Count != 0)
                 {
+                    //Remove the selected warning from the recs array
                     recs[warningIndex].Warnings.Remove(recs[warningIndex].Warnings[warning]);
+                    //Update the record
                     MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
 
+                    //Reply to the user
                     await ReplyAsync("User's warning has been removed.");
                 }
+                //If the rec doesnt exist
                 else
                 {
+                    //Reply to the user
                     await ReplyAsync("This user has no warnings.");
                 }
             }
+            //If the user doesnt have the staff role
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
@@ -274,7 +313,6 @@ namespace Crossy
         [Command("mute")]
         public async Task MuteAsync(SocketGuildUser targetFake, string time, [Remainder] string reason)
         {
-
             //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
@@ -282,20 +320,25 @@ namespace Crossy
             //If the user has the staff role
             if (staffRole != null)
             {
+                //Get the server recs
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
+                //Create a moderator object
                 Moderator moderator = new Moderator
                 {
                     Username = Context.User.Username,
                     Discriminator = Context.User.DiscriminatorValue,
                     id = Context.User.Id
                 };
+                //Create a target object
                 Target target = new Target
                 {
                     Username = targetFake.Username,
                     Discriminator = targetFake.DiscriminatorValue,
                     id = targetFake.Id
                 };
+                //Create the muteModel object
                 Mute muteModel = new Mute
                 {
                     TimeMuted = System.DateTime.Now,
@@ -304,113 +347,168 @@ namespace Crossy
                     Target = target
                 };
                 #region Adding time stuff
+                //If 2nd arg contains D
                 if (time.Contains("d"))
                 {
+                    //Get the time string and remove the D
                     var realTime = time.Substring(0, time.Length - 1);
+                    //Set the muteModel.Duration to the time string
                     muteModel.Duration = time;
 
+                    //Create a new TimeSpam for the duration of the mute
                     System.TimeSpan duration = new System.TimeSpan(int.Parse(realTime), 0, 0, 0);
+                    //Create a DateTime for when the mute is scheduled to end
                     DateTime endMute = System.DateTime.Now.Add(duration);
+                    //Set muteModel.MuteFinished to endMute
                     muteModel.MuteFinished = endMute;
                 }
+                //If 2nd arg contains H
                 else if (time.Contains("h"))
                 {
+                    //Get the time string and remove the H
                     var realTime = time.Substring(0, time.Length - 1);
+                    //Set the muteModel.Duration to the time string
                     muteModel.Duration = time;
-
+                    //Create a new TimeSpam for the duration of the mute
                     System.TimeSpan duration = new System.TimeSpan(0, int.Parse(realTime), 0, 0);
+                    //Create a DateTime for when the mute is scheduled to end
                     DateTime endMute = System.DateTime.Now.Add(duration);
+                    //Set muteModel.MuteFinished to endMute
                     muteModel.MuteFinished = endMute;
                 }
+                //If 2nd arg contains M
                 else if (time.Contains("m"))
                 {
+                    //Get the time string and remove the M
                     var realTime = time.Substring(0, time.Length - 1);
+                    //Set the muteModel.Duration to the time string
                     muteModel.Duration = time;
-
+                    //Create a new TimeSpam for the duration of the mute
                     System.TimeSpan duration = new System.TimeSpan(0, 0, int.Parse(realTime), 0);
+                    //Create a DateTime for when the mute is scheduled to end
                     DateTime endMute = System.DateTime.Now.Add(duration);
+                    //Set muteModel.MuteFinished to endMute
                     muteModel.MuteFinished = endMute;
                 }
                 #endregion
+                //Add the mute to the mutes array inside the ServerRec
                 serverRecs[index].Mutes.Add(muteModel);
+                //Update the records
                 MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
 
+                //Get the muteRole object from the guild
                 var muteRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == "Muted");
 
+                //Add the muteRole to the user
                 await targetFake.AddRoleAsync(muteRole);
 
+                //Create the EmbedBuilder object
                 EmbedBuilder builder = new EmbedBuilder();
+
+                //Add information to the builder object
                 builder.WithTitle($"**You have been muted in {Context.Guild.Name}**").WithDescription($"Duration: {time}\nReason: {reason}").WithColor(Discord.Color.Red)
                     .WithFooter("If you think this was an error, please contact a server moderator.");
+                
+                //Send the target a direct message with the embed
                 await targetFake.SendMessageAsync("", false, builder.Build());
 
+                //Reply to the user
                 await ReplyAsync($"<@{targetFake.Id}> was muted by <@{Context.User.Id}>.\n" +
                     $"Duration: {time}\n" +
                     $"Reason: {reason}");
             }
+            //If the user doesn't have the staff role
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
         [Command("unmute")]
         public async Task UnMuteAsync(SocketGuildUser targetFake)
         {
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staffRole
             if (staffRole != null)
             {
+                //Get the server recs
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
-
+                //Gets the index of the mute where the target id matches the target specified from the mutes array
                 int muteIndex = serverRecs[index].Mutes.IndexOf(serverRecs[index].Mutes.Where(x => x.Target.id == targetFake.Id).FirstOrDefault());
 
+                //Remove the mute from the array
                 serverRecs[index].Mutes.Remove(serverRecs[index].Mutes[muteIndex]);
 
+                //Update the record inside the database
                 MongoCRUD.Instance.UpdateRecord("Servers", serverRecs[index].GuildID.ToString(), serverRecs[index]);
 
+                //Get the muted role from the guild
                 var muteRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == "Muted");
 
+                //Remove the role from the target
                 await targetFake.RemoveRoleAsync(muteRole);
 
+                //Reply the user
                 await ReplyAsync($"<@{targetFake.Id}> has been unmuted.");
 
             }
+            //If the user doesnt have the staffRole
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
         [Command("mutes")]
         public async Task MutesAsync()
         {
+            //VARIABLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staff role
             if (staffRole != null)
             {
+                //Get the server recs
                 var serverRecs = MongoCRUD.Instance.LoadRecords<GuildModel>("Servers");
+                //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = serverRecs.IndexOf(serverRecs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
+                //Create a string builder object
                 StringBuilder sb = new StringBuilder();
+                
+                //For each mute in the mutes array inside the server recs
                 foreach (var mute in serverRecs[index].Mutes)
                 {
+                    //New TimeSpan set to the MuteFinished - DateTime now
                     TimeSpan timeLeft = mute.MuteFinished.Subtract(DateTime.UtcNow);
+                    //Format the TimeSpan and make it a string
                     string timeLeftTrimmed = string.Format($"{timeLeft.Days}:{timeLeft.Hours}:{timeLeft.Minutes}:{timeLeft.Seconds}");
+                    //Append it to the string builder
                     sb.Append($"<@{mute.Target.id}> - {mute.Reason} - {timeLeftTrimmed}\n");
                 }
 
+                //Create a new embed builder
                 EmbedBuilder builder = new EmbedBuilder();
+                //Add stuff to the embed builder
                 builder.WithTitle("Active Mutes:").WithDescription(sb.ToString()).WithColor(Discord.Color.DarkerGrey);
 
+                //Reply to the user
                 await ReplyAsync("", false, builder.Build());
             }
+            //If the user doesn't have the staff role
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
         #endregion
-
         [Command("softban")]
         public async Task SoftbanAsync(SocketGuildUser user, [Remainder] string reason)
         {
