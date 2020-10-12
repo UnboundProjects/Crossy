@@ -512,46 +512,67 @@ namespace Crossy
         [Command("softban")]
         public async Task SoftbanAsync(SocketGuildUser user, [Remainder] string reason)
         {
+            //VARIABLES
             var user1 = Context.User as SocketGuildUser;
             var staffRole = user1.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staff role
             if (staffRole != null)
             {
+                //Ban the targeted user
                 await user.BanAsync();
+                //Remove the targeted user
                 await Context.Guild.RemoveBanAsync(user);
                 
-
+                //Create an embed builder object
                 EmbedBuilder builder = new EmbedBuilder();
+                //Add information to the embed builder
                 builder.WithTitle($"**{user.Username}#{user.Discriminator} has been soft banned.**").WithColor(Discord.Color.Red);
 
+                //Create another embed builder object
                 EmbedBuilder builder1 = new EmbedBuilder();
+                //Add information to the embed builder
                 builder1.WithTitle($"**You have been kicked from the {Context.Guild.Name} server**").WithDescription($"Reason: {reason}").WithColor(Discord.Color.Red)
                     .WithFooter("If you think this was an error, please contact a moderator.");
 
+                //Send the 2nd embed builder to the user that was banned then unbanned
                 await user.SendMessageAsync("", false, builder1.Build());
+                //Reply to the user who used the command
                 await ReplyAsync("", false, builder.Build());
             }
+            //If the user doesn't have the staff role
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
         [Command("clear")]
         public async Task ClearAsync(int amount)
         {
+            //VARAIBLES
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
+
+            //If the user has the staff role
             if (staffRole != null)
             {
+                //Get the messages from the guild, plus 1 to include the command itself
                 var messages = await Context.Channel.GetMessagesAsync(amount + 1).FlattenAsync();
+                //Delete the amount of messages 
                 await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
+                //Reply saying messages have been cleared, saving the msg object
                 var msg = await ReplyAsync($"{amount} messages cleared.");
 
+                //Wait 2 seconds
                 await Task.Delay(2000);
-
+                //Delete msg object
                 await msg.DeleteAsync();
             }
+            //If the user doesnt have the staff role
             else
             {
+                //Reply to the user
                 await ReplyAsync("You do not have permission to use this command.");
             }
         }
@@ -560,6 +581,7 @@ namespace Crossy
         [Command("custom body")]
         public async Task CustomBodyAsync([Remainder] string body)
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -577,6 +599,7 @@ namespace Crossy
                 //Update the record
                 MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
 
+                //Reply to the user
                 await ReplyAsync("Custom body has been set.");
             }
         }
@@ -584,6 +607,7 @@ namespace Crossy
         [Command("custom title")]
         public async Task CustomTitleAsync([Remainder] string title)
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -601,6 +625,7 @@ namespace Crossy
                 //Update the record
                 MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
 
+                //Reply to the user
                 await ReplyAsync("Custom title has been set.");
             }
             
@@ -608,6 +633,7 @@ namespace Crossy
         [Command("custom footer")]
         public async Task CustomFooterAsync([Remainder] string footer)
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -625,6 +651,7 @@ namespace Crossy
                 //Update the record
                 MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
 
+                //Reply to the user
                 await ReplyAsync("Custom footer has been set.");
             }
 
@@ -633,6 +660,7 @@ namespace Crossy
         [Command("custom thumbnail")]
         public async Task CustomThumbnailAsync([Remainder] string thumbnail)
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -650,6 +678,7 @@ namespace Crossy
                 //Update the record
                 MongoCRUD.Instance.UpdateRecord("Servers", recs[index].GuildID.ToString(), recs[index]);
 
+                //Reply to the user
                 await ReplyAsync("Custom thumbnail has been set.");
             }
 
@@ -658,6 +687,7 @@ namespace Crossy
         [Command("custom post")]
         public async Task CustomPostAsync()
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -669,19 +699,27 @@ namespace Crossy
                 //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
+                //Set rec to the custom announement embed inside the server rec. this is just to make the code cleaner
                 var rec = recs[index].CustomAnnouncement;
 
+                //Create an embed builder
                 EmbedBuilder builder = new EmbedBuilder();
+                //Add information to the embed builder
                 builder.WithTitle(rec.Title).WithColor(Discord.Color.Red)
                     .WithDescription(rec.Body).WithFooter(rec.Footer);
 
+                //Try add the thumbnail, if it's not a proper URI it wont work
                 try
                 {
+                    //Add the thumbnail to the builder
                     builder.WithThumbnailUrl(rec.Thumbnail);
+                    //Reply to the user
                     await ReplyAsync("", false, builder.Build());
                 }
+                //If it fails to add the proper URI
                 catch
                 {
+                    //Reply to the user
                     await ReplyAsync("", false, builder.Build());
                 }
                 
@@ -689,11 +727,10 @@ namespace Crossy
 
         }
 
-        //Works but need to figure out a way to make it so it cannot break. The try catches dont work because if the first
-        //arg isnt a channel it just errors out. Need to figure out how to get around this.
         [Command("custom post")]
         public async Task CustomPostToChannelAsync(SocketTextChannel channel, [Remainder] string message)
         {
+            //Variables
             var user = Context.User as SocketGuildUser;
             var staffRole = user.Roles.FirstOrDefault(x => x.Name == "Staff");
             //Checks to see if the person who used the command has the staff role
@@ -705,34 +742,26 @@ namespace Crossy
                 //Gets the index of the recs array where the guild id is equal to the guild the command was used in
                 int index = recs.IndexOf(recs.Where(p => p.GuildID == Context.Guild.Id.ToString()).FirstOrDefault());
 
+                //Set rec to the custom announement embed inside the server rec. this is just to make the code cleaner
                 var rec = recs[index].CustomAnnouncement;
 
                 EmbedBuilder builder = new EmbedBuilder();
                 builder.WithTitle(rec.Title).WithColor(Discord.Color.Red)
                     .WithDescription(rec.Body).WithFooter(rec.Footer);
 
+                //Try add the thumbnail, if it's not a proper URI it wont work
                 try
                 {
+                    //Add the thumbnail to the embed
                     builder.WithThumbnailUrl(rec.Thumbnail);
-                    try
-                    {
-                        await channel.SendMessageAsync(message, false, builder.Build());
-                    }
-                    catch
-                    {
-                        await ReplyAsync("ERROR: Text Channel doens't exist.");
-                    }
+                    //Send the message to the channel provided
+                    await channel.SendMessageAsync(message, false, builder.Build());
                 }
+                //If it fails to add a proper URI
                 catch
                 {
-                    try
-                    {
-                        await channel.SendMessageAsync(message, false, builder.Build());
-                    }
-                    catch
-                    {
-                        await ReplyAsync("ERROR: Text Channel doens't exist.");
-                    }
+                    //Send the message to the channel provided
+                    await channel.SendMessageAsync(message, false, builder.Build());
                 }
 
             }
